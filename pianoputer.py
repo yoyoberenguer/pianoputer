@@ -76,7 +76,7 @@ def parse_arguments():
 
     return (parser.parse_args(), parser)
 
-from pygame.sndarray import *
+
 def main():
     # Parse command line arguments
     (args, parser) = parse_arguments()
