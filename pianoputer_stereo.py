@@ -1,12 +1,24 @@
+
+
+# BUILDING THE FIRE ANIMATION LIBRARY
+# PLEASE TYPE THE FOLLOWING COMMAND LINE UNDER THE SAME DIRECTORY
+
+# python setup_project.py build_ext --inplace
+from random import random, randrange
+
+import numpy
 from scipy.io import wavfile
 import argparse
-import numpy as np
 from numpy import int16, empty, round, hanning, arange, \
-    angle, fft, abs, exp, ndarray, zeros, pi
+    angle, fft, abs, exp, ndarray, zeros, pi, full, uint8
 import pygame
 import sys
 import warnings
-import timeit
+
+try:
+    from FireEffect import make_palette, fire_texture24, fire_surface24
+except ImportError:
+    raise ImportError("\n<FireEffect> library is missing on your system or FireEffect.pyx is not cynthonized.")
 
 
 def parse_arguments():
@@ -43,7 +55,6 @@ def channels(sound_object):
     DETERMINE IF A SOUND OBJECT IS MONO OR STEREO
     RETURN AN INTEGER REPRESENTING THE NUMBER OF CHANNELS (1, 2, 4, 6)
     CHANNEL 4 and 6 ARE NOT IMPLEMENTED YET (NEW FEATURE IN SDL 2.0)
-
     :param sound_object: numpy.ndarray; Sound samples into an array
     :return: int; return the number of channels
     """
@@ -63,16 +74,16 @@ def channels(sound_object):
         raise NotImplemented
     return channel
 
-ONE_TWELVE     = 1.0 / 12.0
-P2_10          = 2 << 10
-P2_11          = 2 << 11
-P2_12          = 2 << 12
-PI2            = 2 * pi
-WINDOW_SIZE    = P2_12
-H              = P2_10
-PHASE          = zeros(WINDOW_SIZE)
-HANNING_WINDOW = hanning(WINDOW_SIZE)
 
+ONE_TWELVE = 1.0 / 12.0
+P2_10 = 2 << 10
+P2_11 = 2 << 11
+P2_12 = 2 << 12
+PI2 = 2 * pi
+WINDOW_SIZE = P2_12
+H = P2_10
+PHASE = zeros(WINDOW_SIZE)
+HANNING_WINDOW = hanning(WINDOW_SIZE)
 
 # PARSE COMMAND LINE ARGUMENTS
 (args, parser) = parse_arguments()
@@ -80,7 +91,6 @@ HANNING_WINDOW = hanning(WINDOW_SIZE)
 # ENABLE WARNINGS FROM SCIPY IF REQUESTED
 if not args.verbose:
     warnings.simplefilter('ignore')
-
 
 # Notes
 #     ----- This function cannot read wav files with 24-bit data.
@@ -114,7 +124,6 @@ def speedx_mono(input_array, factor):
     """
     SPEEDS UP / SLOWS DOWN A SOUND, BY SOME FACTOR.
     OUTPUT ARRAY SIZES DEPENDS ON THE VARIABLE FACTOR (SEMITONES).
-
     :param input_array: numpy.ndarray; Sound samples into an array (1d numpy.ndarray type int16)
     :param factor: float;
     :return: Return sound samples (1d numpy.ndarray type int16)
@@ -132,7 +141,6 @@ def speedx_stereo(input_array, factor):
     """
     SPEEDS UP / SLOWS DOWN A SOUND, BY SOME FACTOR.
     OUTPUT ARRAY SIZES DEPENDS ON THE VARIABLE FACTOR (SEMITONES).
-
     :param input_array: numpy.ndarray; Sound samples into an array (2d array type int16)
     :param factor: float; SEMITONES
     :return: Return sound samples (2d numpy.ndarray type int16)
@@ -145,17 +153,15 @@ def speedx_stereo(input_array, factor):
     indices = indices[indices < len(input_array)].astype(int)
     return input_array[indices, :]
 
+
 def stretch_mono(snd_array, factor):
     """
     STRETCHES/SHORTENS A SOUND, BY SOME FACTOR.
-
     SOUND STRETCHING CAN BE DONE USING THE CLASSICAL PHASE VOCODER METHOD.
     YOU FIRST BREAK THE SOUND INTO OVERLAPPING BITS, AND YOU REARRANGE THESE BITS
     SO THAT THEY WILL OVERLAP EVEN MORE (IF YOU WANT TO SHORTEN THE SOUND)
     OR LESS (IF YOU WANT TO STRETCH THE SOUND)
-
     * COMPATIBLE ONLY WITH MONO SOUND
-
     :param snd_array: numpy.ndarray; Sound samples into an array (1d array type int16)
     :param factor: float; SEMITONES
     :return: return 1d numpy.ndarray type int16
@@ -169,7 +175,7 @@ def stretch_mono(snd_array, factor):
     phase = PHASE.copy()
     result = zeros(int(SOUND_LEN / factor + WINDOW_SIZE))
 
-    for i in arange(0, SOUND_LEN - (WINDOW_SIZE + H), H*factor):
+    for i in arange(0, SOUND_LEN - (WINDOW_SIZE + H), H * factor):
         i = int(i)
         # TWO POTENTIALLY OVERLAPPING SUBARRAY
         a1 = snd_array[i: i + WINDOW_SIZE]
@@ -180,14 +186,14 @@ def stretch_mono(snd_array, factor):
         s2 = fft.fft(HANNING_WINDOW * a2)
 
         # REPHASE ALL FREQUENCIES
-        phase = (phase + angle(s2/s1)) % PI2
+        phase = (phase + angle(s2 / s1)) % PI2
 
-        a2_rephased = fft.ifft(abs(s2)*exp(1j*phase))
-        i2 = int(i/factor)
-        result[i2: i2 + WINDOW_SIZE] += HANNING_WINDOW*a2_rephased.real
+        a2_rephased = fft.ifft(abs(s2) * exp(1j * phase))
+        i2 = int(i / factor)
+        result[i2: i2 + WINDOW_SIZE] += HANNING_WINDOW * a2_rephased.real
 
     # NORMALIZE (16BIT)
-    result = (P2_11 * result/result.max())
+    result = (P2_11 * result / result.max())
 
     return result.astype('int16')
 
@@ -195,12 +201,10 @@ def stretch_mono(snd_array, factor):
 def stretch_stereo(snd_array, factor):
     """
     STRETCHES/SHORTENS A SOUND, BY SOME FACTOR.
-
     SOUND STRETCHING CAN BE DONE USING THE CLASSICAL PHASE VOCODER METHOD.
     YOU FIRST BREAK THE SOUND INTO OVERLAPPING BITS, AND YOU REARRANGE THESE BITS
     SO THAT THEY WILL OVERLAP EVEN MORE (IF YOU WANT TO SHORTEN THE SOUND)
     OR LESS (IF YOU WANT TO STRETCH THE SOUND)
-
     * COMPATIBLE ONLY FOR STEREO SOUNDS:
     IN STEREOPHONIC SOUND MORE CHANNELS ARE USED (TYPICALLY TWO).
     YOU CAN USE TWO DIFFERENT CHANNELS AND MAKE ONE FEED ONE SPEAKER
@@ -209,7 +213,6 @@ def stretch_stereo(snd_array, factor):
     IF YOU’VE EVER LOOKED AT THE WAVEFORM OF A STEREO AUDIO FILE WITHIN A DIGITAL AUDIO WORKSTATION (DAW),
     YOU’VE LIKELY NOTICED THAT THERE ARE TWO WAVEFORMS APART OF THE FILE.
     EACH WAVEFORM REPRESENTS A SINGLE CHANNEL OF AUDIO.
-
     :param snd_array: numpy.ndarray; Sound samples into an array (2d array type int16)
     :param factor: float; SEMITONES
     :return: return a 2d numpy.ndarray type int16
@@ -235,7 +238,7 @@ def stretch_stereo(snd_array, factor):
         a1_ch2 = snd_array[i: i + WINDOW_SIZE, 1]
         # COMPUTE THE ONE-DIMENSIONAL DISCRETE FOURIER
         # TRANSFORM FOR CHANNEL 1 & 2 SECTION (I: I + WINDOW_SIZE)
-        s1  = fft.fft(HANNING_WINDOW * a1_ch1)
+        s1 = fft.fft(HANNING_WINDOW * a1_ch1)
         s11 = fft.fft(HANNING_WINDOW * a1_ch2)
 
         # EXTRACT CHANNEL 1 & 2 SECTION (i + H: i + WINDOW_SIZE + H)
@@ -243,13 +246,13 @@ def stretch_stereo(snd_array, factor):
         a2_ch2 = snd_array[i + H: i + WINDOW_SIZE + H, 1]
         # COMPUTE THE ONE-DIMENSIONAL DISCRETE FOURIER
         # TRANSFORM FOR CHANNEL 1 & 2 SECTION (I + H: I + WINDOW_SIZE + H)
-        s2  = fft.fft(HANNING_WINDOW * a2_ch1)
+        s2 = fft.fft(HANNING_WINDOW * a2_ch1)
         s22 = fft.fft(HANNING_WINDOW * a2_ch2)
 
         phase1 = (phase1 + angle(s2 / s1)) % PI2
         phase2 = (phase2 + angle(s22 / s11)) % PI2
 
-        a2_rephased  = fft.ifft(abs(s2) * exp(1j * phase1))
+        a2_rephased = fft.ifft(abs(s2) * exp(1j * phase1))
         a22_rephased = fft.ifft(abs(s22) * exp(1j * phase2))
 
         i2 = int(i / factor)
@@ -269,7 +272,6 @@ def pitchshift(snd_array, n):
     IF YOU WANT A HIGHER PITCH, YOU FIRST STRETCH THE SOUND WHILE CONSERVING THE PITCH,
     THEN YOU SPEED UP THE RESULT, SUCH THAT THE FINAL SOUND HAS THE SAME DURATION AS
     THE INITIAL ONE, BUT A HIGHER PITCH DUE TO THE SPEED CHANGE.
-
     :param snd_array: numpy.ndarray; Sound samples into an array (2d array type int16)
     :param n: float; SEMITONES
     :return: return a numpy.ndarray that can be converted into a pygame.sound object
@@ -283,15 +285,14 @@ def pitchshift(snd_array, n):
 
     # SELECT THE CORRECT ALGORITHM ACCORDING TO THE NUMBER OF TRACK(S)
     if CHANNEL == 2:
-        stretched = stretch_stereo(snd_array, 1.0/factor_list[n])
+        stretched = stretch_stereo(snd_array, 1.0 / factor_list[n])
         return speedx_stereo(stretched[WINDOW_SIZE:], factor_list[n])
     else:
-        stretched = stretch_mono(snd_array, 1.0/factor_list[n])
+        stretched = stretch_mono(snd_array, 1.0 / factor_list[n])
         return speedx_mono(stretched[WINDOW_SIZE:], factor_list[n])
 
 
 def main():
-
     sys.stdout.write('Transponding SOUND file... ')
     sys.stdout.flush()
     transposed_sounds = [pitchshift(SOUND, n) for n in TONES]
@@ -314,7 +315,22 @@ def main():
     # using FREQ, SOUND = wavfile.read(args.wav.name) to extract the sample rate (FREQ)
     pygame.mixer.init(frequency=FREQ, size=-16, channels=CHANNEL, buffer=2048)
 
-    pygame.display.set_mode((250, 250))
+    width = 800
+    height = 400
+    width_2 = width // 2
+    height_2 = height // 2
+    # GENERATE THE SAMPLING FOR HALF WIDTH & HEIGHT TO SPEED UP THE PROCESS
+    palette, surf = make_palette(width_2, height_2 - 150, 4.0, 60, 1.5)
+    mask = full((width_2, height_2), 255, dtype=uint8)
+    buff = fire_texture24(width_2, height_2, 500, 3.95, palette, mask)
+    # ADJUST THE SURFACE (SMOOTHSCALE) TO WINDOW SIZE
+    i = 0
+    for image in buff:
+        buff[i] = pygame.transform.smoothscale(image, (width, height))
+        i += 1
+
+    SCREEN = pygame.display.set_mode((width, height))
+    SCREEN.set_alpha(None)
 
     keys = args.keyboard.read().split('\n')
 
@@ -325,31 +341,49 @@ def main():
     key_sound = dict(zip(keys, sounds))
     is_playing = {k: False for k in keys}
 
-    # todo if the window lost focus cant hear the SOUND
+    pygame.event.set_grab(True)
+    CLOCK = pygame.time.Clock()
+
+    fire = zeros((height, width), dtype=numpy.float32)
+    empty_x2 = pygame.Surface((width, height)).convert()
+
+    FRAME = 0
     while True:
+        pygame.display.set_caption("PianoComputer %s fps" % round(CLOCK.get_fps(), 2))
+        pygame.event.pump()
 
-        event = pygame.event.wait()
+        # event = pygame.event.wait()
+        for event in pygame.event.get():
+            if event.type in (pygame.KEYDOWN, pygame.KEYUP):
+                key = pygame.key.name(event.key)
 
-        if event.type in (pygame.KEYDOWN, pygame.KEYUP):
-            key = pygame.key.name(event.key)
+            if event.type == pygame.KEYDOWN:
+                if (key in key_sound.keys()) and (not is_playing[key]):
+                    key_sound[key].play(fade_ms=50)
+                    is_playing[key] = True
 
-        if event.type == pygame.KEYDOWN:
-            if (key in key_sound.keys()) and (not is_playing[key]):
-                key_sound[key].play(fade_ms=50)
-                is_playing[key] = True
+                elif event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    raise KeyboardInterrupt
 
-            elif event.key == pygame.K_ESCAPE:
-                pygame.quit()
-                raise KeyboardInterrupt
+            elif event.type == pygame.KEYUP and key in key_sound.keys():
+                # Stops with 50ms fadeout
+                key_sound[key].fadeout(50)
+                is_playing[key] = False
 
-        elif event.type == pygame.KEYUP and key in key_sound.keys():
-            # Stops with 50ms fadeout
-            key_sound[key].fadeout(50)
-            is_playing[key] = False
+        s, o = fire_surface24(width_2, height_2, 3.95, palette, mask, fire)
+        pygame.transform.scale2x(s, empty_x2)
+        SCREEN.blit(empty_x2, (0, 0))
+        fire = o
+
+        CLOCK.tick(300)
+        pygame.display.flip()
+        FRAME += 1
 
 
 if __name__ == '__main__':
     try:
+        print("Esc to quit")
         main()
     except KeyboardInterrupt:
         print('Goodbye')
