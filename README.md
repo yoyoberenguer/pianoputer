@@ -4,7 +4,19 @@ This repository contains a minimal code to play on your computer keyboard like i
 
 ## Installation
 
-To play you first need to install Python, and the Python libraries Numpy, Scipy and Pygame (this command should install them: ``pip install scipy pygame``).
+To play you first need to install Python, and the Python libraries Numpy, Scipy, cython and Pygame (this command should install them: ``pip install scipy pygame cython ``).
+
+## Cython source file compilation
+In a command prompt
+C:\>python setup_project build_ext --inplace
+
+The command above will cynthonize the following files **
+- rand.pyx
+- hsv.pyx
+- hsl.pyx
+- FireEffect.pyx
+
+** A compiler such visual studio, MSVC, CGYWIN needs to be install and setup correctly onto your system in order to compile C source code (randnumber.c, hsl_c.c, hsv_c)
 
 ## Play! 
 
