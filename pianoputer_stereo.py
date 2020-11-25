@@ -313,21 +313,19 @@ def main():
     # but pygame cannot perform Sound ressampling, so the mixer should be initialized
     # to match the values of your audio resources (This is why we are
     # using FREQ, SOUND = wavfile.read(args.wav.name) to extract the sample rate (FREQ)
-    pygame.mixer.init(frequency=FREQ, size=-16, channels=CHANNEL, buffer=2048)
+    if int(pygame.version.ver[0]) >= 2:
+        pygame.mixer.init(frequency=FREQ, size=-16, channels=CHANNEL, buffer=2048, allowedchanges=0)
+    else:
+        pygame.mixer.init(frequency=FREQ, size=-16, channels=CHANNEL, buffer=2048)
 
-    width = 800
+    width = 400
     height = 400
     width_2 = width // 2
     height_2 = height // 2
     # GENERATE THE SAMPLING FOR HALF WIDTH & HEIGHT TO SPEED UP THE PROCESS
     palette, surf = make_palette(width_2, height_2 - 150, 4.0, 60, 1.5)
     mask = full((width_2, height_2), 255, dtype=uint8)
-    buff = fire_texture24(width_2, height_2, 500, 3.95, palette, mask)
-    # ADJUST THE SURFACE (SMOOTHSCALE) TO WINDOW SIZE
-    i = 0
-    for image in buff:
-        buff[i] = pygame.transform.smoothscale(image, (width, height))
-        i += 1
+
 
     SCREEN = pygame.display.set_mode((width, height))
     SCREEN.set_alpha(None)
@@ -341,7 +339,7 @@ def main():
     key_sound = dict(zip(keys, sounds))
     is_playing = {k: False for k in keys}
 
-    pygame.event.set_grab(True)
+    # pygame.event.set_grab(True)
     CLOCK = pygame.time.Clock()
 
     fire = zeros((height, width), dtype=numpy.float32)
