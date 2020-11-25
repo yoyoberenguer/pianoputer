@@ -44,3 +44,4 @@ python make_kb_file.py
 ```
 
 This will let you press the keys in the order that you want, and create a new keyboard configuration file, by default `my_keyboard.kb` (just follow the instructions). You can then use the custom keyboard file with:
+
