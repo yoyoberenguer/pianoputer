@@ -4,7 +4,7 @@ This repository contains a minimal code to play on your computer keyboard like i
 
 ## Installation
 
-To play you first need to install Python, and the Python libraries Numpy, Scipy, cython and Pygame (this command should install them: ``pip install scipy pygame cython ``).
+To play you first need to install Python, and the Python libraries Numpy==1.19.3, Scipy, cython and Pygame (this command should install them: ``pip install scipy pygame cython numpy==1.19.3``).
 
 ## Cython source file compilation
 In a command prompt
