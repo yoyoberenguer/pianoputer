@@ -16,7 +16,10 @@ The command above will cynthonize the following files **
 - hsl.pyx
 - FireEffect.pyx
 
-** A compiler such visual studio, MSVC, CGYWIN needs to be install and setup correctly onto your system in order to compile C source code (randnumber.c, hsl_c.c, hsv_c)
+** A compiler such visual studio, MSVC, CGYWIN needs to be install and setup correctly onto your system in order to compile C code:
+- randnumber.c
+- hsl_c.c
+- hsv_c
 
 ## Play! 
 
