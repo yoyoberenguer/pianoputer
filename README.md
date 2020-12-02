@@ -2,6 +2,11 @@
 
 This repository contains a minimal code to play on your computer keyboard like if it was a piano, an instrument that I call the Pianoputer (yeah I am not very good at names). Here is a [video](https://www.youtube.com/watch?v=z410eauCnHc) of the program in action.
 
+## New release
+```
+Please download and install setup_pianoputer.exe
+```
+
 ## Installation
 
 To play you first need to install Python, and the Python libraries Numpy==1.19.3, Scipy, cython and Pygame (this command should install them: ``pip install scipy pygame cython numpy==1.19.3``).
